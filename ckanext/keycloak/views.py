@@ -19,6 +19,7 @@ client_id = tk.config.get('ckanext.keycloak.client_id', environ.get('CKANEXT__KE
 realm_name = tk.config.get('ckanext.keycloak.realm_name', environ.get('CKANEXT__KEYCLOAK__REALM_NAME'))
 redirect_uri = tk.config.get('ckanext.keycloak.redirect_uri', environ.get('CKANEXT__KEYCLOAK__REDIRECT_URI'))
 client_secret_key = tk.config.get('ckanext.keycloak.client_secret_key', environ.get('CKANEXT__KEYCLOAK__CLIENT_SECRET_KEY'))
+sub_support =  tk.config.get('ckanext.keycloak.sub_support', environ.get('CKANEXT__KEYCLOAK__SUB_SUPPORT'))
 
 client = KeycloakClient(server_url, client_id, realm_name, client_secret_key)
 
@@ -59,6 +60,7 @@ def sso_login():
     log.info("SSO Login: {}".format(userinfo))
     if userinfo:
         user_dict = {
+            'id': userinfo['sub'] if sub_support else None,
             'name': helpers.ensure_unique_username_from_email(userinfo['preferred_username']),
             'email': userinfo['email'],
             'password': helpers.generate_password(),
@@ -67,8 +69,9 @@ def sso_login():
                 'idp': 'google'
             }
         }
+
         context = {"model": model, "session": model.Session}
-        g.user_obj = helpers.process_user(user_dict)
+        g.user_obj = helpers.process_user(user_dict,sub_support)
         g.user = g.user_obj.name
         context['user'] = g.user
         context['auth_user_obj'] = g.user_obj
@@ -87,7 +90,7 @@ def reset_password():
         log.info(f'User requested reset link for invalid email: {email}')
         h.flash_error('Invalid email address')
         return tk.redirect_to(tk.url_for('user.request_reset'))
-    user = model.User.by_email(email)
+    user = model.User.by_email(email) #TODO reset by sub?
     if not user:
         log.info(u'User requested reset link for unknown user: {}'.format(email))
         return tk.redirect_to(tk.url_for('user.login'))

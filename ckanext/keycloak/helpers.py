@@ -9,7 +9,6 @@ import ckan.model as model
 import ckan.plugins.toolkit as tk
 from os import environ
 
-
 log = logging.getLogger(__name__)
 
 
@@ -35,9 +34,11 @@ def ensure_unique_username_from_email(email):
 
     return cleaned_localpart
 
-
-def process_user(userinfo):
-    return _get_user_by_email(userinfo.get('email')) or _create_user(userinfo)
+def process_user(userinfo,sub_support):
+    if sub_support:
+        return _get_user_by_sub(userinfo.get('id'),userinfo) or _create_user(userinfo)
+    else:
+        return _get_user_by_email(userinfo.get('email')) or _create_user(userinfo)
 
 
 def _get_user_by_email(email):
@@ -47,6 +48,29 @@ def _get_user_by_email(email):
 
     activate_user_if_deleted(user)
     
+    return user
+
+
+def _get_user_by_sub(sub,userinfo):
+    user = model.User.get(sub)
+
+    if user and isinstance(user, list):
+        user = user[0]
+
+    user_email = user.email if user else None
+    userinfo_email = userinfo.get('email') if userinfo else None
+
+    if user_email != userinfo_email:
+        if userinfo_email is not None and user_email is not None:
+            log.info("Emails are different, update user data: {} != {}".format(userinfo_email, user_email))
+            userinfo['name'] = ensure_unique_username_from_email(userinfo.get('email'))
+            user = _patch_user({key: userinfo[key] for key in ['id', 'email', 'name']})
+            log.info("Patched user email")
+        else:
+            log.warning("One of the emails is None. Cannot update.")
+
+    activate_user_if_deleted(user)
+
     return user
 
 
@@ -70,6 +94,15 @@ def _create_user(userinfo):
     
     return _get_user_by_email(created_user_dict['email'])
 
+def _patch_user(userinfo):
+    context = {
+        u'ignore_auth': True,
+    }
+    updated_user_dict = tk.get_action(
+        u'user_patch'
+    )(context, userinfo)
+
+    return _get_user_by_email(userinfo['email'])
 
 def button_style():
 
