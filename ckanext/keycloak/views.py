@@ -75,6 +75,7 @@ def sso_login():
         g.user = g.user_obj.name
         context['user'] = g.user
         context['auth_user_obj'] = g.user_obj
+        helpers.handle_group_memberships(client.get_user_info(token))
 
         response = tk.redirect_to(tk.url_for('user.me', context))
 
