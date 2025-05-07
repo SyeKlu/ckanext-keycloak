@@ -4,10 +4,13 @@ from ckan.plugins import toolkit as tk
 import ckan.lib.helpers as h
 import ckan.model as model
 from ckan.common import g
+from ckan.types import Response
 from ckan.views.user import set_repoze_user, RequestResetView
+from typing import Optional
 from ckanext.keycloak.keycloak import KeycloakClient
 import ckanext.keycloak.helpers as helpers
 from os import environ
+from urllib.parse import urlencode, urlparse, urlunparse, parse_qs
 
 log = logging.getLogger(__name__)
 
@@ -43,11 +46,43 @@ def _log_user_into_ckan(resp):
 
     log.info(u'User {0}<{1}> logged in successfully'.format(g.user_obj.name, g.user_obj.email))
 
+
+def _next_page_or_default(target: Optional[str]) -> Response:
+    if target:
+        id = ""
+        if ":" in target:
+            l = target.split(":")
+            target = l[0]
+            id= l[1]
+            
+        if target and h.url_is_local(target):
+            return h.redirect_to(target, **({'id': id} if id not in (None, "") else {}))
+    return tk.redirect_to(tk.url_for('home.index'))
+
+def append_next_to_url(url: str, next_val: Optional[str]) -> str:
+    if not next_val:
+        return url
+    
+    url_parts = list(urlparse(url))
+
+    params= {'state':next_val}
+    query = dict(parse_qs(url_parts[4]))
+    query.update(params)
+
+    url_parts[4] = urlencode(query, doseq=True)
+    print(url_parts)
+    print(urlunparse(url_parts))
+    return urlunparse(url_parts)
+
 def sso():
     log.info("SSO Login")
     auth_url = None
     try:
         auth_url = client.get_auth_url(redirect_uri=redirect_uri)
+        data = tk.request.args
+        next_param = data.get('state')
+        auth_url = append_next_to_url(auth_url, next_param)
+        print(auth_url)
     except Exception as e:
         log.error("Error getting auth url: {}".format(e))
         return tk.abort(500, "Error getting auth url: {}".format(e))
@@ -77,13 +112,14 @@ def sso_login():
         context['auth_user_obj'] = g.user_obj
         helpers.handle_group_memberships(client.get_user_info(token))
 
-        response = tk.redirect_to(tk.url_for('user.me', context))
+        state = data.get('state')
+        response = _next_page_or_default(state)
 
         _log_user_into_ckan(response)
         log.info("Logged in success")
         return response
     else:
-        return tk.redirect_to(tk.url_for('user.login'))
+        return tk.redirect_to(tk.url_for('home.index'))
 
 def reset_password():
     email = tk.request.form.get('user', None)

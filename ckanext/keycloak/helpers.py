@@ -94,6 +94,15 @@ def handle_group_memberships(user_dict):
     tenants = {group.split('.')[0] for group in user_dict['groups']}
     tenant_ids = {hash_string_to_uuid(tenant): tenant for tenant in tenants}
 
+    current_ckan_tenants = _current_orgs()
+    current_ckan_tenants_id = {hash_string_to_uuid(tenant): tenant for tenant in current_ckan_tenants}
+
+    tenant_ids = {
+        tenant_id: tenant
+        for tenant_id, tenant in tenant_ids.items()
+        if tenant_id in current_ckan_tenants_id
+    }    
+
     current_permissions = _permission_org_user({'id': user_dict['sub']})
     if current_permissions:
         permissions_dict = {permission['id']: permission['capacity'] for permission in current_permissions}
@@ -179,6 +188,9 @@ def _org_member_create(userinfo):
     )(context, userinfo)
 
     return response
+
+def _current_orgs():
+    return tk.get_action(u'organization_list')()
 
 def _org_member_delete(userinfo):
     context = {
