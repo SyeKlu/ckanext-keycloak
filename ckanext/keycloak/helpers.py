@@ -71,7 +71,7 @@ def _get_user_by_sub(sub,userinfo):
         if userinfo_email is not None and user_email is not None:
             log.info("Emails are different, update user data: {} != {}".format(userinfo_email, user_email))
             userinfo['name'] = ensure_unique_username_from_email(userinfo.get('email'))
-            user = _patch_user({key: userinfo[key] for key in ['id', 'email', 'name']})
+            user = _patch_user({key: userinfo[key] for key in ['id', 'email', 'name', 'fullname']})
             log.info("Patched user email")
         else:
             log.warning("One of the emails is None. Cannot update.")
