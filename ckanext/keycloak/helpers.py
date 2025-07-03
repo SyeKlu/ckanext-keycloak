@@ -81,7 +81,7 @@ def _get_user_by_sub(sub,userinfo):
     if user_fullname != userinfo_fullname:
         if userinfo_fullname is not None and user_email is not None:
             log.info("Fullnames are different, update user data: {} != {}".format(user_fullname, userinfo_fullname))
-            user = _patch_user({key: userinfo[key] for key in ['id','fullname']})
+            user = _patch_user({key: userinfo[key] for key in ['id','email','fullname']})
             log.info("Patched user fullname")
         else:
             log.warning("One of the fullnames is None. Cannot update.")
