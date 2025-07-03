@@ -65,16 +65,27 @@ def _get_user_by_sub(sub,userinfo):
         user = user[0]
 
     user_email = user.email if user else None
+    user_fullname =user.fullname if user else None
     userinfo_email = userinfo.get('email') if userinfo else None
+    userinfo_fullname = userinfo.get('fullname') if userinfo else None
 
     if user_email != userinfo_email:
         if userinfo_email is not None and user_email is not None:
             log.info("Emails are different, update user data: {} != {}".format(userinfo_email, user_email))
             userinfo['name'] = ensure_unique_username_from_email(userinfo.get('email'))
-            user = _patch_user({key: userinfo[key] for key in ['id', 'email', 'name', 'fullname']})
+            user = _patch_user({key: userinfo[key] for key in ['id', 'email', 'name']})
             log.info("Patched user email")
         else:
             log.warning("One of the emails is None. Cannot update.")
+    
+    if user_fullname != userinfo_fullname:
+        if userinfo_fullname is not None and user_email is not None:
+            log.info("Fullnames are different, update user data: {} != {}".format(user_fullname, userinfo_fullname))
+            user = _patch_user({key: userinfo[key] for key in ['id','fullname']})
+            log.info("Patched user fullname")
+        else:
+            log.warning("One of the fullnames is None. Cannot update.")
+
 
     activate_user_if_deleted(user)
 
