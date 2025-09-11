@@ -19,6 +19,22 @@ group_hierarchy = {
     'admin': 3
 }
 
+dcat_ap_de_groups = [
+    "agri",
+    "econ",
+    "educ",
+    "ener",
+    "envi",
+    "heal",
+    "intr",
+    "just",
+    "soci",
+    "gove",
+    "regi",
+    "tech",
+    "tran",
+]
+
 def generate_password():
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(8))
@@ -146,6 +162,13 @@ def handle_group_memberships(user_dict):
     for tenant_id, capacity in permissions_dict.items():
         print(f"Tenant {tenant_id}: Berechtigung {capacity}")
 
+    for g in dcat_ap_de_groups:
+        _group_member_create({
+            "username": user_dict['sub'],
+            "id": g,
+            "role": "member"
+        })
+
 def get_highest_permission(user_groups, tenant_prefix):
     tenant_groups = [group for group in user_groups if group.startswith(tenant_prefix)]
 
@@ -209,6 +232,16 @@ def _org_member_delete(userinfo):
     }
     response = tk.get_action(
         u'organization_member_delete'
+    )(context, userinfo)
+
+    return response
+
+def _group_member_create(userinfo):
+    context = {
+        u'ignore_auth': True,
+    }
+    response = tk.get_action(
+        u'group_member_create'
     )(context, userinfo)
 
     return response
